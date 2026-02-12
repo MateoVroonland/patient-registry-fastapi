@@ -1,9 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, status
 
-from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES
-from app.dependencies import PatientServiceDep
+from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES, PATIENT_CONFIRMATION_EMAIL_SUBJECT
+from app.dependencies import EmailClientDep, PatientServiceDep
 from app.schemas.patient import PatientCreateRequest, PatientResponse
 
 router = APIRouter(prefix="/patients", tags=["patients"])
@@ -33,6 +33,15 @@ async def create_patient(
     payload: PatientCreateFormDep,
     document_photo: DocumentPhotoDep,
     patient_service: PatientServiceDep,
+    email_client: EmailClientDep,
+    background_tasks: BackgroundTasks,
 ) -> PatientResponse:
     patient = await patient_service.create_patient(payload=payload, document_photo=document_photo)
+    background_tasks.add_task(
+        email_client.send_email,
+        to_email=patient.email,
+        to_name=patient.full_name,
+        subject=PATIENT_CONFIRMATION_EMAIL_SUBJECT,
+        body=f"Hello {patient.full_name}, your patient registration was successful.",
+    )
     return PatientResponse.model_validate(patient)

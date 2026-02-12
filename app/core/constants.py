@@ -20,3 +20,5 @@ ALLOWED_DOCUMENT_PHOTO_EXTENSIONS = frozenset(
         ".png",
     },
 )
+
+PATIENT_CONFIRMATION_EMAIL_SUBJECT = "Patient Registration Confirmation"

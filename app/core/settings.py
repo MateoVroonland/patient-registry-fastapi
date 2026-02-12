@@ -18,5 +18,12 @@ class Settings(BaseSettings):
     uploads_dir: Path = Field(default=Path("data/uploads"))
     file_chunk_size: int = 1024 * 1024
 
+    mail_host: str | None = None
+    mail_port: int | None = None
+    mail_username: str | None = None
+    mail_password: str | None = None
+    mail_from_email: str | None = None
+    mail_from_name: str | None = None
+
 
 settings = Settings()

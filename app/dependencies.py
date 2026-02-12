@@ -3,9 +3,11 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import settings
 from app.db.session import get_session
 from app.repositories.file_repository import FileRepository
 from app.repositories.patient_repository import PatientRepository
+from app.services.email_client import EmailClient, MailtrapSmtpEmailClient, NoopEmailClient
 from app.services.file_storage_service import LocalFileStorageService
 from app.services.patient_service import PatientService
 
@@ -14,6 +16,29 @@ SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 def get_file_storage_service() -> LocalFileStorageService:
     return LocalFileStorageService()
+
+
+def get_email_client() -> EmailClient:
+    if all(
+        (
+            settings.mail_host,
+            settings.mail_port,
+            settings.mail_username,
+            settings.mail_password,
+            settings.mail_from_email,
+            settings.mail_from_name,
+        ),
+    ):
+        return MailtrapSmtpEmailClient(
+            host=settings.mail_host,
+            port=settings.mail_port,
+            username=settings.mail_username,
+            password=settings.mail_password,
+            from_email=settings.mail_from_email,
+            from_name=settings.mail_from_name,
+        )
+
+    return NoopEmailClient()
 
 
 def get_file_repository(session: SessionDep) -> FileRepository:
@@ -27,6 +52,7 @@ def get_patient_repository(session: SessionDep) -> PatientRepository:
 FileRepositoryDep = Annotated[FileRepository, Depends(get_file_repository)]
 PatientRepositoryDep = Annotated[PatientRepository, Depends(get_patient_repository)]
 FileStorageDep = Annotated[LocalFileStorageService, Depends(get_file_storage_service)]
+EmailClientDep = Annotated[EmailClient, Depends(get_email_client)]
 
 
 def get_patient_service(
