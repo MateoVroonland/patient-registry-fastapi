@@ -1,7 +1,48 @@
 [project]
-name = "prueba-light-it"
+name = "prueba-fastapi"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "alembic>=1.18.4",
+    "fastapi>=0.128.8",
+    "pydantic[email]>=2.12.5",
+    "sqlalchemy>=2.0.46",
+]
+
+[tool.ruff]
+# Ruff puede inferirlo desde requires-python, pero dejarlo explícito evita sorpresas.
+target-version = "py313"
+
+line-length = 120
+
+src = ["src"]
+
+[tool.ruff.lint]
+extend-select = [
+    "E","W","C90","I","N","D","UP","YTT","ANN","ASYNC","S","BLE","FBT","B","A","COM",
+    "C4","DTZ","T10","DJ","EM","EXE","FA","ISC","ICN","LOG","G","INP","PIE","PYI",
+    "PT","Q","RSE","RET","SLF","SLOT","SIM","TID","TC","INT","ARG","PTH","TD","FIX",
+    "PD","PGH","PL","TRY","FLY","NPY","FAST","AIR","PERF","FURB","RUF",
+]
+ignore = [
+    "E501",
+    "D1",
+    "FBT003",
+    "D203",
+    "D212",
+    "D401",
+    "S311",
+    "PERF401",
+    "RET504",
+    "FA102",
+    "TRY003",
+    "EM101",
+    "TC002",
+    "TC003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test_*.py" = ["S101","S105","S106","S107","PLR2004","SLF001","D","ANN","ARG001","PLC0415","EM102"]
+"*_test.py" = ["S101","S105","S106","S107","PLR2004","SLF001","D","ANN","ARG001","PLC0415","EM102"]
