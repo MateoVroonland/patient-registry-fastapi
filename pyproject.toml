@@ -17,8 +17,9 @@ dependencies = [
 ]
 
 [tool.ruff]
-# Ruff puede inferirlo desde requires-python, pero dejarlo explícito evita sorpresas.
 target-version = "py313"
+
+extend-exclude = ["app/migrations"]
 
 line-length = 120
 
@@ -63,4 +64,9 @@ dev = [
     "testcontainers>=4.14.1",
     "ty>=0.0.16",
     "uvicorn>=0.40.0",
+]
+
+[tool.ty.src]
+exclude = [
+    "app/migrations/**"
 ]
