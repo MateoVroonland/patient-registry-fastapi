@@ -1,0 +1,20 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-lint
+        name: Ruff Lint
+        entry: bash -c "uv run ruff check ."
+        language: system
+        types: [python]
+
+      - id: type-check
+        name: Type Check (Astral ty)
+        entry: bash -c "uv run ty check"
+        language: system
+        pass_filenames: false
+
+      - id: tests
+        name: Tests
+        entry: bash -c "make test"
+        language: system
+        pass_filenames: false
