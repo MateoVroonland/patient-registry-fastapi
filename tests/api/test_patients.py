@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+
 from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES, PATIENT_CONFIRMATION_EMAIL_SUBJECT
 from app.core.settings import settings
 from app.dependencies import get_notification_client

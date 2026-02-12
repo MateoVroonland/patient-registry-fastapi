@@ -6,6 +6,12 @@ from urllib.parse import urlparse
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session, SessionTransaction
+from testcontainers.postgres import PostgresContainer
+
 from app import models as _models  # noqa: F401
 from app.core.settings import settings
 from app.db.base import Base
@@ -13,11 +19,6 @@ from app.db.session import get_session
 from app.dependencies import get_notification_client
 from app.main import app
 from app.services.notification_client import NoopNotificationClient
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Session, SessionTransaction
-from testcontainers.postgres import PostgresContainer
 
 
 def _asyncpg_url_from_container(container: PostgresContainer) -> str:

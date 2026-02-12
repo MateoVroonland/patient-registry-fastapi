@@ -1,4 +1,4 @@
-.PHONY: help prod dev install test clean create-migration deploy-migrations rollback-migrations lint
+.PHONY: help prod dev install test clean create-migration deploy-migrations rollback-migrations lint test-cov
 
 help:
 	@echo "Commands:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make test     - Run tests"
 	@echo "  make clean    - Clean environments"
 	@echo "  make lint     - Run linting"
+	@echo "  make test-cov - Run tests with coverage"
 
 api:
 	uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -44,6 +45,9 @@ deploy-migrations:
 
 rollback-migrations:
 	uv run alembic downgrade -1
+
+test-cov:
+	uv run pytest --cov=app --cov-report=term-missing --cov-report=html
 
 lint:
 	@echo "Running Ruff..."
