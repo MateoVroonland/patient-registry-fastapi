@@ -19,11 +19,9 @@ dependencies = [
 [tool.ruff]
 target-version = "py313"
 
-extend-exclude = ["app/migrations"]
+extend-exclude = ["migrations/**"]
 
 line-length = 120
-
-src = ["src"]
 
 [tool.ruff.lint]
 extend-select = [
@@ -68,5 +66,5 @@ dev = [
 
 [tool.ty.src]
 exclude = [
-    "app/migrations/**"
+    "migrations/**"
 ]
