@@ -23,11 +23,8 @@ class LocalFileStorageService:
         self._max_file_size_bytes = max_file_size_bytes
         self._uploads_dir.mkdir(parents=True, exist_ok=True)
 
-    async def save_upload(self, upload_file: UploadFile) -> FileUploadCreate:
-        server_uid = uuid4()
-        suffix = Path(upload_file.filename or "").suffix.lower()
-        server_filename = f"{server_uid}{suffix}" if suffix else str(server_uid)
-        storage_path = server_filename
+    async def save_upload(self, upload_file: UploadFile, content_type: str) -> FileUploadCreate:
+        storage_path = str(uuid4())
         absolute_path = self.resolve_path(storage_path)
 
         size_bytes = 0
@@ -45,10 +42,9 @@ class LocalFileStorageService:
             await upload_file.close()
 
         return FileUploadCreate(
-            server_filename=server_filename,
-            original_filename=Path(upload_file.filename or server_filename).name,
+            original_filename=Path(upload_file.filename or storage_path).name,
             storage_path=storage_path,
-            content_type=upload_file.content_type or "application/octet-stream",
+            content_type=content_type,
             size_bytes=size_bytes,
         )
 

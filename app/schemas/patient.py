@@ -56,7 +56,6 @@ class PatientDocumentFileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    server_filename: str
     original_filename: str
     storage_path: str
     content_type: str

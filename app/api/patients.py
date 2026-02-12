@@ -13,10 +13,7 @@ DocumentPhotoDep = Annotated[
     UploadFile,
     File(
         ...,
-        description=(
-            f"Patient document photo (PNG/JPG/JPEG). Max "
-            f"{MAX_DOCUMENT_PHOTO_SIZE_BYTES // (1024 * 1024)}MB."
-        ),
+        description=(f"Patient document photo (PNG/JPG/JPEG). Max {MAX_DOCUMENT_PHOTO_SIZE_BYTES // (1024 * 1024)}MB."),
     ),
 ]
 

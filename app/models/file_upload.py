@@ -15,7 +15,6 @@ class FileUpload(BaseModel):
     __tablename__ = "files"
     __table_args__ = (CheckConstraint("size_bytes >= 0", name="ck_files_size_nonnegative"),)
 
-    server_filename: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     storage_path: Mapped[str] = mapped_column(String(512), nullable=False, unique=True)
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)

@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES, ALLOWED_DOCUMENT_PHOTO_EXTENSIONS
+from app.core.constants import (
+    ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES,
+    ALLOWED_DOCUMENT_PHOTO_EXTENSIONS,
+    DOCUMENT_PHOTO_CONTENT_TYPE_BY_EXTENSION,
+)
 from app.core.exceptions import DuplicateResourceException, InvalidPayloadException
 
 if TYPE_CHECKING:
@@ -37,11 +41,18 @@ class PatientService:
 
         content_type = (document_photo.content_type or "").lower()
         extension = Path(document_photo.filename or "").suffix.lower()
+        expected_content_type = DOCUMENT_PHOTO_CONTENT_TYPE_BY_EXTENSION.get(extension)
 
-        if content_type not in ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES or extension not in ALLOWED_DOCUMENT_PHOTO_EXTENSIONS:
+        if extension not in ALLOWED_DOCUMENT_PHOTO_EXTENSIONS or expected_content_type is None:
             raise InvalidPayloadException("Document photo must be PNG or JPG/JPEG.")
 
-        file_payload = await self._file_storage.save_upload(upload_file=document_photo)
+        if content_type not in ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES or content_type != expected_content_type:
+            raise InvalidPayloadException("Document photo must be PNG or JPG/JPEG.")
+
+        file_payload = await self._file_storage.save_upload(
+            upload_file=document_photo,
+            content_type=expected_content_type,
+        )
 
         try:
             file_upload = await self._file_repository.create(file_payload)

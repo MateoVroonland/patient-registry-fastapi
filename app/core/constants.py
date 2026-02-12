@@ -7,6 +7,12 @@ ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES = frozenset(
     },
 )
 
+DOCUMENT_PHOTO_CONTENT_TYPE_BY_EXTENSION = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+}
+
 ALLOWED_DOCUMENT_PHOTO_EXTENSIONS = frozenset(
     {
         ".jpg",
