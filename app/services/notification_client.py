@@ -64,3 +64,12 @@ class MailtrapSmtpNotificationClient(NotificationClient):
                 smtp.starttls()
             smtp.login(self._config.username, self._config.password)
             smtp.send_message(email_message)
+
+
+class NoopNotificationClient(NotificationClient):
+    async def send_notification(self, *, message: NotificationMessage) -> None:
+        logger.info(
+            "Noop notification client - skipping send to '%s' with subject '%s'.",
+            message.recipient,
+            message.subject or DEFAULT_EMAIL_SUBJECT,
+        )

@@ -10,7 +10,9 @@ from app import models as _models  # noqa: F401
 from app.core.settings import settings
 from app.db.base import Base
 from app.db.session import get_session
+from app.dependencies import get_notification_client
 from app.main import app
+from app.services.notification_client import NoopNotificationClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
@@ -89,7 +91,11 @@ async def api_client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     async def override_get_session() -> AsyncIterator[AsyncSession]:
         yield db_session
 
+    def override_get_notification_client() -> NoopNotificationClient:
+        return NoopNotificationClient()
+
     app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_notification_client] = override_get_notification_client
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client

@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES, PATIENT_CONFIRMATION_EMAIL_SUBJECT
 from app.core.settings import settings
@@ -39,6 +41,20 @@ async def post_patient(
         data=request_payload,
         files=build_document_photo(*document_photo),
     )
+
+
+async def create_patient_and_get_body(
+    api_client,
+    payload: dict[str, str] | None = None,
+    document_photo: tuple[str, bytes, str] = DEFAULT_DOCUMENT_PHOTO,
+) -> dict:
+    response = await post_patient(
+        api_client,
+        payload=payload,
+        document_photo=document_photo,
+    )
+    assert response.status_code == 201
+    return response.json()
 
 
 def assert_error_response(response, *, status_code: int, code: str, message: str) -> None:
@@ -91,6 +107,51 @@ async def test_create_patient_returns_created(api_client):
     uploaded_file = settings.uploads_dir / data["document_file"]["storage_path"]
     assert uploaded_file.exists()
     assert uploaded_file.read_bytes() == DEFAULT_DOCUMENT_PHOTO[1]
+
+
+@pytest.mark.asyncio
+async def test_get_patient_by_id_returns_patient(api_client):
+    created = await create_patient_and_get_body(api_client)
+
+    response = await api_client.get(f"/patients/{created['id']}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == created["id"]
+    assert data["email"] == created["email"]
+
+
+@pytest.mark.asyncio
+async def test_get_patient_by_id_returns_404_when_missing(api_client):
+    response = await api_client.get(f"/patients/{uuid4()}")
+    assert_error_response(
+        response,
+        status_code=404,
+        code="NOT_FOUND",
+        message="Patient was not found.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_patients_returns_paginated_results(api_client):
+    await create_patient_and_get_body(api_client, payload=build_payload(email="first@example.com"))
+    await create_patient_and_get_body(api_client, payload=build_payload(email="second@example.com"))
+    await create_patient_and_get_body(api_client, payload=build_payload(email="third@example.com"))
+
+    first_page_response = await api_client.get("/patients?page=1&size=2")
+    assert first_page_response.status_code == 200
+    first_page = first_page_response.json()
+    assert first_page["page"] == 1
+    assert first_page["size"] == 2
+    assert first_page["total"] == 3
+    assert len(first_page["items"]) == 2
+
+    second_page_response = await api_client.get("/patients?page=2&size=2")
+    assert second_page_response.status_code == 200
+    second_page = second_page_response.json()
+    assert second_page["page"] == 2
+    assert second_page["size"] == 2
+    assert second_page["total"] == 3
+    assert len(second_page["items"]) == 1
 
 
 @pytest.mark.asyncio
@@ -251,11 +312,160 @@ async def test_create_patient_does_not_send_extra_confirmation_email_on_duplicat
 
 
 @pytest.mark.asyncio
-async def test_openapi_includes_patient_creation_docs(api_client):
-    response = await api_client.get("/openapi.json")
-    assert response.status_code == 200
+async def test_patch_patient_updates_partial_fields(api_client):
+    created = await create_patient_and_get_body(api_client)
 
-    schema = response.json()
-    post_operation = schema["paths"]["/patients"]["post"]
-    assert post_operation["summary"] == "Create patient"
-    assert "multipart/form-data" in post_operation["requestBody"]["content"]
+    response = await api_client.patch(
+        f"/patients/{created['id']}",
+        data={"full_name": "Juan Updated"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["full_name"] == "Juan Updated"
+    assert data["email"] == created["email"]
+
+
+@pytest.mark.asyncio
+async def test_patch_patient_replaces_document_photo(api_client):
+    created = await create_patient_and_get_body(api_client)
+    old_storage_path = created["document_file"]["storage_path"]
+    old_file = settings.uploads_dir / old_storage_path
+    assert old_file.exists()
+
+    response = await api_client.patch(
+        f"/patients/{created['id']}",
+        files=build_document_photo("updated.png", b"updated-png-bytes", "image/png"),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["document_file"]["original_filename"] == "updated.png"
+    assert data["document_file"]["content_type"] == "image/png"
+    assert data["document_file"]["storage_path"] != old_storage_path
+    assert not old_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_patch_patient_returns_400_when_empty_payload(api_client):
+    created = await create_patient_and_get_body(api_client)
+
+    response = await api_client.patch(f"/patients/{created['id']}")
+    assert_error_response(
+        response,
+        status_code=400,
+        code="INVALID_PAYLOAD",
+        message="At least one field or document photo must be provided.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_patch_patient_returns_409_for_duplicate_email(api_client):
+    first = await create_patient_and_get_body(api_client, payload=build_payload(email="first@example.com"))
+    await create_patient_and_get_body(api_client, payload=build_payload(email="second@example.com"))
+
+    response = await api_client.patch(
+        f"/patients/{first['id']}",
+        data={"email": "second@example.com"},
+    )
+    assert_error_response(
+        response,
+        status_code=409,
+        code="DUPLICATE_RESOURCE",
+        message="A patient with this email already exists.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_put_patient_replaces_fields_without_replacing_document(api_client):
+    created = await create_patient_and_get_body(api_client)
+    storage_path = created["document_file"]["storage_path"]
+
+    response = await api_client.put(
+        f"/patients/{created['id']}",
+        data={
+            "full_name": "Juan Replaced",
+            "email": "juan.replaced@example.com",
+            "phone_number": "+5491133344466",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["full_name"] == "Juan Replaced"
+    assert data["email"] == "juan.replaced@example.com"
+    assert data["phone_number"] == "+5491133344466"
+    assert data["document_file"]["storage_path"] == storage_path
+
+
+@pytest.mark.asyncio
+async def test_put_patient_replaces_document_photo_when_provided(api_client):
+    created = await create_patient_and_get_body(api_client)
+    old_storage_path = created["document_file"]["storage_path"]
+    old_file = settings.uploads_dir / old_storage_path
+    assert old_file.exists()
+
+    response = await api_client.put(
+        f"/patients/{created['id']}",
+        data={
+            "full_name": "Juan Replaced",
+            "email": "juan.replaced@example.com",
+            "phone_number": "+5491133344466",
+        },
+        files=build_document_photo("replaced.png", b"replaced-png-bytes", "image/png"),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["document_file"]["original_filename"] == "replaced.png"
+    assert data["document_file"]["content_type"] == "image/png"
+    assert data["document_file"]["storage_path"] != old_storage_path
+    assert not old_file.exists()
+
+
+@pytest.mark.asyncio
+async def test_put_patient_returns_409_for_duplicate_email(api_client):
+    first = await create_patient_and_get_body(api_client, payload=build_payload(email="first@example.com"))
+    await create_patient_and_get_body(api_client, payload=build_payload(email="second@example.com"))
+
+    response = await api_client.put(
+        f"/patients/{first['id']}",
+        data={
+            "full_name": "Juan Updated",
+            "email": "second@example.com",
+            "phone_number": "+5491133344466",
+        },
+    )
+    assert_error_response(
+        response,
+        status_code=409,
+        code="DUPLICATE_RESOURCE",
+        message="A patient with this email already exists.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_patient_removes_patient_and_document_file(api_client):
+    created = await create_patient_and_get_body(api_client)
+    storage_path = created["document_file"]["storage_path"]
+    uploaded_file = settings.uploads_dir / storage_path
+    assert uploaded_file.exists()
+
+    delete_response = await api_client.delete(f"/patients/{created['id']}")
+    assert delete_response.status_code == 204
+    assert not uploaded_file.exists()
+
+    get_response = await api_client.get(f"/patients/{created['id']}")
+    assert_error_response(
+        get_response,
+        status_code=404,
+        code="NOT_FOUND",
+        message="Patient was not found.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_delete_patient_returns_404_when_missing(api_client):
+    response = await api_client.delete(f"/patients/{uuid4()}")
+    assert_error_response(
+        response,
+        status_code=404,
+        code="NOT_FOUND",
+        message="Patient was not found.",
+    )

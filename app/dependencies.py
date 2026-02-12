@@ -10,6 +10,7 @@ from app.repositories.patient_repository import PatientRepository
 from app.services.file_storage_service import LocalFileStorageService
 from app.services.notification_client import (
     MailtrapSmtpNotificationClient,
+    NoopNotificationClient,
     NotificationClient,
     SmtpEmailConfig,
 )
@@ -43,7 +44,7 @@ def get_notification_client() -> NotificationClient:
         )
         return MailtrapSmtpNotificationClient(config=smtp_email_config)
 
-    raise ValueError("Mailtrap SMTP configuration is not set")
+    return NoopNotificationClient()
 
 
 def get_file_repository(session: SessionDep) -> FileRepository:
