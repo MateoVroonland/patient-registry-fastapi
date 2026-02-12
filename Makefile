@@ -3,7 +3,7 @@
 help:
 	@echo "Commands:"
 	@echo "  make api      - Run API with hot reload"
-	@echo "  make prod     - Production environment (API + DB)"
+	@echo "  make prod     - Production environment (API + DB, applies migrations on API startup)"
 	@echo "  make dev      - Only DB for development"
 	@echo "  make create-migration message='description' - Create migration"
 	@echo "  make deploy-migrations - Deploy migrations"
@@ -19,6 +19,9 @@ api:
 
 prod:
 	docker compose up -d --build
+
+logs:
+	docker compose logs -f
 
 dev:
 	docker compose -f docker-compose-dev.yml up -d

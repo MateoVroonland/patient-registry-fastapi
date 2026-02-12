@@ -13,4 +13,4 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-CMD ["fastapi", "run", "app/main.py", "--port", "${PORT:-8000}", "--host", "0.0.0.0"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

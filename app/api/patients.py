@@ -2,9 +2,11 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES, PATIENT_CONFIRMATION_EMAIL_SUBJECT
-from app.dependencies import NotificationClientDep, PatientServiceDep
+from app.core.exceptions import NotFoundException
+from app.dependencies import FileStorageDep, NotificationClientDep, PatientServiceDep
 from app.schemas.patient import (
     PatientCreateRequest,
     PatientListResponse,
@@ -101,6 +103,35 @@ async def get_patient_by_id(
 ) -> PatientResponse:
     patient = await patient_service.get_patient_by_id(patient_id=patient_id)
     return PatientResponse.model_validate(patient)
+
+
+@router.get(
+    "/{patient_id}/document-photo",
+    summary="Get patient document photo",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Patient document photo retrieved successfully.",
+            "content": {"image/png": {}, "image/jpeg": {}},
+        },
+        status.HTTP_404_NOT_FOUND: {"description": "Patient or patient document photo not found."},
+    },
+)
+async def get_patient_document_photo(
+    patient_id: UUID,
+    patient_service: PatientServiceDep,
+    file_storage: FileStorageDep,
+) -> FileResponse:
+    patient = await patient_service.get_patient_by_id(patient_id=patient_id)
+    document_file = patient.document_file
+    file_path = file_storage.resolve_path(document_file.storage_path)
+    if not file_path.exists():
+        raise NotFoundException("Patient document photo was not found.")
+
+    return FileResponse(
+        path=file_path,
+        media_type=document_file.content_type,
+        filename=document_file.original_filename,
+    )
 
 
 @router.put(

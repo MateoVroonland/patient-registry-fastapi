@@ -133,6 +133,42 @@ async def test_get_patient_by_id_returns_404_when_missing(api_client):
 
 
 @pytest.mark.asyncio
+async def test_get_patient_document_photo_returns_file(api_client):
+    created = await create_patient_and_get_body(api_client)
+
+    response = await api_client.get(f"/patients/{created['id']}/document-photo")
+    assert response.status_code == 200
+    assert response.content == DEFAULT_DOCUMENT_PHOTO[1]
+    assert response.headers["content-type"] == DEFAULT_DOCUMENT_PHOTO[2]
+
+
+@pytest.mark.asyncio
+async def test_get_patient_document_photo_returns_404_when_patient_missing(api_client):
+    response = await api_client.get(f"/patients/{uuid4()}/document-photo")
+    assert_error_response(
+        response,
+        status_code=404,
+        code="NOT_FOUND",
+        message="Patient was not found.",
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_patient_document_photo_returns_404_when_file_missing_on_disk(api_client):
+    created = await create_patient_and_get_body(api_client)
+    storage_path = created["document_file"]["storage_path"]
+    (settings.uploads_dir / storage_path).unlink()
+
+    response = await api_client.get(f"/patients/{created['id']}/document-photo")
+    assert_error_response(
+        response,
+        status_code=404,
+        code="NOT_FOUND",
+        message="Patient document photo was not found.",
+    )
+
+
+@pytest.mark.asyncio
 async def test_list_patients_returns_paginated_results(api_client):
     await create_patient_and_get_body(api_client, payload=build_payload(email="first@example.com"))
     await create_patient_and_get_body(api_client, payload=build_payload(email="second@example.com"))
