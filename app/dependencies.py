@@ -7,8 +7,12 @@ from app.core.settings import settings
 from app.db.session import get_session
 from app.repositories.file_repository import FileRepository
 from app.repositories.patient_repository import PatientRepository
-from app.services.email_client import EmailClient, MailtrapSmtpEmailClient, NoopEmailClient
 from app.services.file_storage_service import LocalFileStorageService
+from app.services.notification_client import (
+    MailtrapSmtpNotificationClient,
+    NotificationClient,
+    SmtpEmailConfig,
+)
 from app.services.patient_service import PatientService
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -18,7 +22,7 @@ def get_file_storage_service() -> LocalFileStorageService:
     return LocalFileStorageService()
 
 
-def get_email_client() -> EmailClient:
+def get_notification_client() -> NotificationClient:
     if all(
         (
             settings.mail_host,
@@ -29,7 +33,7 @@ def get_email_client() -> EmailClient:
             settings.mail_from_name,
         ),
     ):
-        return MailtrapSmtpEmailClient(
+        smtp_email_config = SmtpEmailConfig(
             host=settings.mail_host,
             port=settings.mail_port,
             username=settings.mail_username,
@@ -37,8 +41,9 @@ def get_email_client() -> EmailClient:
             from_email=settings.mail_from_email,
             from_name=settings.mail_from_name,
         )
+        return MailtrapSmtpNotificationClient(config=smtp_email_config)
 
-    return NoopEmailClient()
+    raise ValueError("Mailtrap SMTP configuration is not set")
 
 
 def get_file_repository(session: SessionDep) -> FileRepository:
@@ -52,7 +57,7 @@ def get_patient_repository(session: SessionDep) -> PatientRepository:
 FileRepositoryDep = Annotated[FileRepository, Depends(get_file_repository)]
 PatientRepositoryDep = Annotated[PatientRepository, Depends(get_patient_repository)]
 FileStorageDep = Annotated[LocalFileStorageService, Depends(get_file_storage_service)]
-EmailClientDep = Annotated[EmailClient, Depends(get_email_client)]
+NotificationClientDep = Annotated[NotificationClient, Depends(get_notification_client)]
 
 
 def get_patient_service(

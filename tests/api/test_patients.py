@@ -1,9 +1,9 @@
 import pytest
 from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES, PATIENT_CONFIRMATION_EMAIL_SUBJECT
 from app.core.settings import settings
-from app.dependencies import get_email_client
+from app.dependencies import get_notification_client
 from app.main import app
-from app.services.email_client import NoopEmailClient
+from app.services.notification_client import NoopNotificationClient, NotificationMessage
 
 DEFAULT_PATIENT_PAYLOAD = {
     "full_name": "Juan Perez",
@@ -53,48 +53,24 @@ class EmailServiceSpy:
     def __init__(self) -> None:
         self.calls: list[dict[str, str]] = []
 
-    async def send_email(
-        self,
-        *,
-        to_email: str,
-        to_name: str,
-        subject: str,
-        body: str,
-    ) -> None:
+    async def send_notification(self, *, message: NotificationMessage) -> None:
         self.calls.append(
             {
-                "to_email": to_email,
-                "to_name": to_name,
-                "subject": subject,
-                "body": body,
+                "recipient": message.recipient,
+                "recipient_name": message.recipient_name or "",
+                "subject": message.subject or "",
+                "body": message.body,
             },
         )
 
 
-class SpyNoopEmailClient(NoopEmailClient):
+class SpyNoopNotificationClient(NoopNotificationClient):
     def __init__(self) -> None:
         self.spy = EmailServiceSpy()
 
-    async def send_email(
-        self,
-        *,
-        to_email: str,
-        to_name: str,
-        subject: str,
-        body: str,
-    ) -> None:
-        await self.spy.send_email(
-            to_email=to_email,
-            to_name=to_name,
-            subject=subject,
-            body=body,
-        )
-        await super().send_email(
-            to_email=to_email,
-            to_name=to_name,
-            subject=subject,
-            body=body,
-        )
+    async def send_notification(self, *, message: NotificationMessage) -> None:
+        await self.spy.send_notification(message=message)
+        await super().send_notification(message=message)
 
 
 @pytest.mark.asyncio
@@ -119,20 +95,20 @@ async def test_create_patient_returns_created(api_client):
 
 @pytest.mark.asyncio
 async def test_create_patient_sends_confirmation_email(api_client):
-    noop_spy = SpyNoopEmailClient()
-    app.dependency_overrides[get_email_client] = lambda: noop_spy
+    noop_spy = SpyNoopNotificationClient()
+    app.dependency_overrides[get_notification_client] = lambda: noop_spy
 
     try:
         response = await post_patient(api_client)
         assert response.status_code == 201
         assert len(noop_spy.spy.calls) == 1
         call = noop_spy.spy.calls[0]
-        assert call["to_email"] == DEFAULT_PATIENT_PAYLOAD["email"]
-        assert call["to_name"] == DEFAULT_PATIENT_PAYLOAD["full_name"]
+        assert call["recipient"] == DEFAULT_PATIENT_PAYLOAD["email"]
+        assert call["recipient_name"] == DEFAULT_PATIENT_PAYLOAD["full_name"]
         assert call["subject"] == PATIENT_CONFIRMATION_EMAIL_SUBJECT
         assert "successful" in call["body"]
     finally:
-        app.dependency_overrides.pop(get_email_client, None)
+        app.dependency_overrides.pop(get_notification_client, None)
 
 
 @pytest.mark.asyncio
@@ -256,8 +232,8 @@ async def test_create_patient_returns_409_for_duplicate_email(api_client):
 
 @pytest.mark.asyncio
 async def test_create_patient_does_not_send_extra_confirmation_email_on_duplicate(api_client):
-    noop_spy = SpyNoopEmailClient()
-    app.dependency_overrides[get_email_client] = lambda: noop_spy
+    noop_spy = SpyNoopNotificationClient()
+    app.dependency_overrides[get_notification_client] = lambda: noop_spy
 
     try:
         first_response = await post_patient(api_client)
@@ -271,7 +247,7 @@ async def test_create_patient_does_not_send_extra_confirmation_email_on_duplicat
         assert second_response.status_code == 409
         assert len(noop_spy.spy.calls) == 1
     finally:
-        app.dependency_overrides.pop(get_email_client, None)
+        app.dependency_overrides.pop(get_notification_client, None)
 
 
 @pytest.mark.asyncio
