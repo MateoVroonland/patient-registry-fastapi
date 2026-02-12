@@ -6,9 +6,9 @@ from uuid import uuid4
 from fastapi import UploadFile
 
 from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES
+from app.core.exceptions import InvalidPayloadException
 from app.core.settings import settings
 from app.schemas.file_upload import FileUploadCreate
-from app.services.errors import InvalidPayloadError
 
 
 class LocalFileStorageService:
@@ -39,7 +39,7 @@ class LocalFileStorageService:
                         output_file.close()
                         self.delete_file(storage_path)
                         message = f"Document photo exceeds max size of {self._max_file_size_bytes // (1024 * 1024)}MB."
-                        raise InvalidPayloadError(message)
+                        raise InvalidPayloadException(message)
                     output_file.write(chunk)
         finally:
             await upload_file.close()

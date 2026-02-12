@@ -68,6 +68,11 @@ async def test_create_patient_returns_422_for_invalid_email(api_client):
     )
 
     assert response.status_code == 422
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["code"] == "VALIDATION_ERROR"
+    assert data["message"] == "Validation error"
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -85,6 +90,11 @@ async def test_create_patient_returns_422_for_invalid_phone_number(api_client):
     )
 
     assert response.status_code == 422
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["code"] == "VALIDATION_ERROR"
+    assert data["message"] == "Validation error"
+    assert "errors" in data["details"]
 
 
 @pytest.mark.asyncio
@@ -102,7 +112,10 @@ async def test_create_patient_returns_400_for_non_image_document(api_client):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Document photo must be PNG or JPG/JPEG."
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["code"] == "INVALID_PAYLOAD"
+    assert data["message"] == "Document photo must be PNG or JPG/JPEG."
 
 
 @pytest.mark.asyncio
@@ -120,7 +133,10 @@ async def test_create_patient_returns_400_for_unsupported_extension(api_client):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Document photo must be PNG or JPG/JPEG."
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["code"] == "INVALID_PAYLOAD"
+    assert data["message"] == "Document photo must be PNG or JPG/JPEG."
 
 
 @pytest.mark.asyncio
@@ -139,7 +155,10 @@ async def test_create_patient_returns_400_for_file_too_large(api_client):
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Document photo exceeds max size of 5MB."
+    data = response.json()
+    assert data["status"] == "error"
+    assert data["code"] == "INVALID_PAYLOAD"
+    assert data["message"] == "Document photo exceeds max size of 5MB."
 
 
 @pytest.mark.asyncio
@@ -167,7 +186,10 @@ async def test_create_patient_returns_409_for_duplicate_email(api_client):
         },
     )
     assert second_response.status_code == 409
-    assert second_response.json()["detail"] == "A patient with this email already exists."
+    data = second_response.json()
+    assert data["status"] == "error"
+    assert data["code"] == "DUPLICATE_RESOURCE"
+    assert data["message"] == "A patient with this email already exists."
 
 
 @pytest.mark.asyncio

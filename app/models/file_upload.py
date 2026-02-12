@@ -12,10 +12,8 @@ if TYPE_CHECKING:
 
 
 class FileUpload(BaseModel):
-    __tablename__ = "file_uploads"
-    __table_args__ = (
-        CheckConstraint("size_bytes >= 0", name="ck_file_uploads_size_nonnegative"),
-    )
+    __tablename__ = "files"
+    __table_args__ = (CheckConstraint("size_bytes >= 0", name="ck_files_size_nonnegative"),)
 
     server_filename: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)

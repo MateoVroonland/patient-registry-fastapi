@@ -1,4 +1,4 @@
-.PHONY: help prod dev install clean create-migration deploy-migrations rollback-migrations lint
+.PHONY: help prod dev install test clean create-migration deploy-migrations rollback-migrations lint
 
 help:
 	@echo "Commands:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make deploy-migrations - Deploy migrations"
 	@echo "  make rollback-migrations - Rollback last migration"
 	@echo "  make install  - Install dependencies"
+	@echo "  make test     - Run tests"
 	@echo "  make clean    - Clean environments"
 	@echo "  make lint     - Run linting"
 
@@ -23,6 +24,9 @@ dev:
 
 install:
 	uv sync --frozen --no-install-project
+
+test:
+	uv run pytest
 
 clean:
 	docker compose down -v --remove-orphans || true

@@ -7,7 +7,7 @@ from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES, ALLOWED_DOCUMENT_PHOTO_EXTENSIONS
-from app.services.errors import DuplicateResourceError, InvalidPayloadError
+from app.core.exceptions import DuplicateResourceException, InvalidPayloadException
 
 if TYPE_CHECKING:
     from app.models.patient import Patient
@@ -33,13 +33,13 @@ class PatientService:
     async def create_patient(self, payload: PatientCreateRequest, document_photo: UploadFile) -> Patient:
         existing_patient = await self._patient_repository.get_by_email(str(payload.email))
         if existing_patient is not None:
-            raise DuplicateResourceError("A patient with this email already exists.")
+            raise DuplicateResourceException("A patient with this email already exists.")
 
         content_type = (document_photo.content_type or "").lower()
         extension = Path(document_photo.filename or "").suffix.lower()
 
         if content_type not in ALLOWED_DOCUMENT_PHOTO_CONTENT_TYPES or extension not in ALLOWED_DOCUMENT_PHOTO_EXTENSIONS:
-            raise InvalidPayloadError("Document photo must be PNG or JPG/JPEG.")
+            raise InvalidPayloadException("Document photo must be PNG or JPG/JPEG.")
 
         file_payload = await self._file_storage.save_upload(upload_file=document_photo)
 

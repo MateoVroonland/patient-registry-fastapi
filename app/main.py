@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api.patients import router as patients_router
+from app.core.exception_handler import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.settings import settings
 from app.db.session import dispose_engine
@@ -25,5 +26,6 @@ app = FastAPI(
 )
 
 app.add_middleware(RequestIdMiddleware)  # type: ignore [call-arg]
+register_exception_handlers(app)
 
 app.include_router(patients_router)

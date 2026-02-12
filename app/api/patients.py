@@ -1,11 +1,10 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 
 from app.core.constants import MAX_DOCUMENT_PHOTO_SIZE_BYTES
 from app.dependencies import PatientServiceDep
 from app.schemas.patient import PatientCreateRequest, PatientResponse
-from app.services.errors import DuplicateResourceError, InvalidPayloadError
 
 router = APIRouter(prefix="/patients", tags=["patients"])
 
@@ -38,11 +37,5 @@ async def create_patient(
     document_photo: DocumentPhotoDep,
     patient_service: PatientServiceDep,
 ) -> PatientResponse:
-    try:
-        patient = await patient_service.create_patient(payload=payload, document_photo=document_photo)
-    except DuplicateResourceError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    except InvalidPayloadError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
+    patient = await patient_service.create_patient(payload=payload, document_photo=document_photo)
     return PatientResponse.model_validate(patient)

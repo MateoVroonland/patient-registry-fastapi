@@ -15,16 +15,14 @@ if TYPE_CHECKING:
 
 class Patient(BaseModel):
     __tablename__ = "patients"
-    __table_args__ = (
-        UniqueConstraint("email", name="uq_patients_email"),
-    )
+    __table_args__ = (UniqueConstraint("email", name="uq_patients_email"),)
 
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
     phone_number: Mapped[str] = mapped_column(String(30), nullable=False)
     document_file_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
-        ForeignKey("file_uploads.id", ondelete="RESTRICT"),
+        ForeignKey("files.id", ondelete="RESTRICT"),
         nullable=False,
         unique=True,
     )
