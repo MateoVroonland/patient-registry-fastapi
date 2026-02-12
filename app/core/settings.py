@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +15,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/prueba"
+    uploads_dir: Path = Field(default=Path("data/uploads"))
+    file_chunk_size: int = 1024 * 1024
 
 
 settings = Settings()

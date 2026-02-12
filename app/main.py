@@ -3,7 +3,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api.files import router as files_router
 from app.api.patients import router as patients_router
 from app.core.logging import setup_logging
 from app.core.settings import settings
@@ -28,4 +27,3 @@ app = FastAPI(
 app.add_middleware(RequestIdMiddleware)  # type: ignore [call-arg]
 
 app.include_router(patients_router)
-app.include_router(files_router)

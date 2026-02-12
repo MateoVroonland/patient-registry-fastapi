@@ -23,9 +23,12 @@ services:
       - "${PORT:-8000}:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-prueba}
+    volumes:
+      - uploads_data:/app/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  uploads_data:

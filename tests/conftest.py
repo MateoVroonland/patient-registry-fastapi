@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Generator
+from pathlib import Path
 from urllib.parse import urlparse
 
 import pytest
 import pytest_asyncio
+from app import models as _models  # noqa: F401
+from app.core.settings import settings
 from app.db.base import Base
 from app.db.session import get_session
 from app.main import app
@@ -92,3 +95,14 @@ async def api_client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
         yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def override_uploads_dir(tmp_path: Path) -> Generator[None]:
+    original_uploads_dir = settings.uploads_dir
+    settings.uploads_dir = tmp_path / "uploads"
+    settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        yield
+    finally:
+        settings.uploads_dir = original_uploads_dir

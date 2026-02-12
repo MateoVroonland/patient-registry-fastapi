@@ -48,6 +48,9 @@ def reset_db_cache() -> None:
 
 
 async def dispose_engine() -> None:
+    if get_engine.cache_info().currsize == 0:
+        return
+
     engine = get_engine()
     await engine.dispose()
     logger.info("Database engine disposed")
