@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -70,6 +71,53 @@ class PatientService:
             content_type=expected_content_type,
         )
 
+    async def _ensure_unique_email_for_patient(self, *, email: str, patient_id: UUID) -> None:
+        existing_patient = await self._patient_repository.get_by_email_excluding_id(
+            email=email,
+            patient_id=patient_id,
+        )
+        if existing_patient is not None:
+            raise DuplicateResourceException("A patient with this email already exists.")
+
+    async def _update_patient_with_optional_document(
+        self,
+        *,
+        patient: Patient,
+        payload: PatientPutRequest | PatientPatchRequest,
+        repository_update: Callable[..., Awaitable[Patient]],
+        document_photo: UploadFile | None,
+    ) -> Patient:
+        new_file_payload: FileUploadCreate | None = None
+        old_storage_path: str | None = None
+
+        try:
+            if document_photo is not None:
+                new_file_payload = await self._save_validated_document_photo(document_photo=document_photo)
+                new_file = await self._file_repository.create(new_file_payload)
+                old_storage_path = patient.document_file.storage_path
+                old_file_id = patient.document_file_id
+                await repository_update(
+                    patient=patient,
+                    payload=payload,
+                    document_file_id=new_file.id,
+                )
+                await self._session.flush()
+                await self._file_repository.delete(old_file_id)
+            else:
+                await repository_update(patient=patient, payload=payload)
+
+            await self._session.commit()
+            await self._refresh_patient(patient)
+        except Exception:
+            await self._session.rollback()
+            if new_file_payload is not None:
+                self._file_storage.delete_file(new_file_payload.storage_path)
+            raise
+        else:
+            if old_storage_path is not None:
+                self._file_storage.delete_file(old_storage_path)
+            return patient
+
     async def get_patient_by_id(self, patient_id: UUID) -> Patient:
         patient = await self._patient_repository.get_by_id(patient_id=patient_id)
         if patient is None:
@@ -112,43 +160,13 @@ class PatientService:
         document_photo: UploadFile | None = None,
     ) -> Patient:
         patient = await self.get_patient_by_id(patient_id=patient_id)
-        existing_patient = await self._patient_repository.get_by_email_excluding_id(
-            email=str(payload.email),
-            patient_id=patient_id,
+        await self._ensure_unique_email_for_patient(email=str(payload.email), patient_id=patient_id)
+        return await self._update_patient_with_optional_document(
+            patient=patient,
+            payload=payload,
+            repository_update=self._patient_repository.replace,
+            document_photo=document_photo,
         )
-        if existing_patient is not None:
-            raise DuplicateResourceException("A patient with this email already exists.")
-
-        new_file_payload: FileUploadCreate | None = None
-        old_storage_path: str | None = None
-
-        try:
-            if document_photo is not None:
-                new_file_payload = await self._save_validated_document_photo(document_photo=document_photo)
-                new_file = await self._file_repository.create(new_file_payload)
-                old_storage_path = patient.document_file.storage_path
-                old_file_id = patient.document_file_id
-                await self._patient_repository.replace(
-                    patient=patient,
-                    payload=payload,
-                    document_file_id=new_file.id,
-                )
-                await self._session.flush()
-                await self._file_repository.delete(old_file_id)
-            else:
-                await self._patient_repository.replace(patient=patient, payload=payload)
-
-            await self._session.commit()
-            await self._refresh_patient(patient)
-        except Exception:
-            await self._session.rollback()
-            if new_file_payload is not None:
-                self._file_storage.delete_file(new_file_payload.storage_path)
-            raise
-        else:
-            if old_storage_path is not None:
-                self._file_storage.delete_file(old_storage_path)
-            return patient
 
     async def patch_patient(
         self,
@@ -163,43 +181,14 @@ class PatientService:
         patient = await self.get_patient_by_id(patient_id=patient_id)
 
         if payload.email is not None:
-            existing_patient = await self._patient_repository.get_by_email_excluding_id(
-                email=str(payload.email),
-                patient_id=patient_id,
-            )
-            if existing_patient is not None:
-                raise DuplicateResourceException("A patient with this email already exists.")
+            await self._ensure_unique_email_for_patient(email=str(payload.email), patient_id=patient_id)
 
-        new_file_payload: FileUploadCreate | None = None
-        old_storage_path: str | None = None
-
-        try:
-            if document_photo is not None:
-                new_file_payload = await self._save_validated_document_photo(document_photo=document_photo)
-                new_file = await self._file_repository.create(new_file_payload)
-                old_storage_path = patient.document_file.storage_path
-                old_file_id = patient.document_file_id
-                await self._patient_repository.patch(
-                    patient=patient,
-                    payload=payload,
-                    document_file_id=new_file.id,
-                )
-                await self._session.flush()
-                await self._file_repository.delete(old_file_id)
-            else:
-                await self._patient_repository.patch(patient=patient, payload=payload)
-
-            await self._session.commit()
-            await self._refresh_patient(patient)
-        except Exception:
-            await self._session.rollback()
-            if new_file_payload is not None:
-                self._file_storage.delete_file(new_file_payload.storage_path)
-            raise
-        else:
-            if old_storage_path is not None:
-                self._file_storage.delete_file(old_storage_path)
-            return patient
+        return await self._update_patient_with_optional_document(
+            patient=patient,
+            payload=payload,
+            repository_update=self._patient_repository.patch,
+            document_photo=document_photo,
+        )
 
     async def delete_patient(self, patient_id: UUID) -> None:
         patient = await self.get_patient_by_id(patient_id=patient_id)
