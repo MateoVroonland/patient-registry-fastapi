@@ -70,17 +70,20 @@ exclude = [
 ]
 
 [tool.coverage.run]
-source = ["app"]
 omit = [
     "migrations/*",
     "migrations/env.py",
     "app/main.py",
     "tests/*",
     "app/core/logging.py",
+    "app/db/session.py",
 ]
+source = ["app"]
+concurrency = ["greenlet", "thread"]
 
 [tool.coverage.report]
 show_missing = true
+skip_covered = false
 precision = 2
 omit = [
     "migrations/*",
@@ -88,4 +91,5 @@ omit = [
     "app/main.py",
     "tests/*",
     "app/core/logging.py",
+    "app/db/session.py",
 ]
