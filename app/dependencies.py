@@ -8,12 +8,8 @@ from app.db.session import get_session
 from app.repositories.file_repository import FileRepository
 from app.repositories.patient_repository import PatientRepository
 from app.services.file_storage_service import LocalFileStorageService
-from app.services.notification_client import (
-    MailtrapSmtpNotificationClient,
-    NoopNotificationClient,
-    NotificationClient,
-    SmtpEmailConfig,
-)
+from app.services.notification_client import NotificationClient
+from app.services.notification_client_factory import create_notification_client
 from app.services.patient_service import PatientService
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
@@ -24,27 +20,7 @@ def get_file_storage_service() -> LocalFileStorageService:
 
 
 def get_notification_client() -> NotificationClient:
-    if all(
-        (
-            settings.mail_host,
-            settings.mail_port,
-            settings.mail_username,
-            settings.mail_password,
-            settings.mail_from_email,
-            settings.mail_from_name,
-        ),
-    ):
-        smtp_email_config = SmtpEmailConfig(
-            host=settings.mail_host,
-            port=settings.mail_port,
-            username=settings.mail_username,
-            password=settings.mail_password,
-            from_email=settings.mail_from_email,
-            from_name=settings.mail_from_name,
-        )
-        return MailtrapSmtpNotificationClient(config=smtp_email_config)
-
-    return NoopNotificationClient()
+    return create_notification_client(settings)
 
 
 def get_file_repository(session: SessionDep) -> FileRepository:
