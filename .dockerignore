@@ -1,0 +1,27 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+
+# Local env
+.env
+
+# IDE / editor
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+*.log
+*.md
+!README.md
